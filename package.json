@@ -1,0 +1,24 @@
+{
+  "name": "diary-calendar",
+  "version": "1.0.0",
+  "description": "Windows用シンプルカレンダーアプリ",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.diarycalendar.app",
+    "productName": "DiaryCalendar",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
+  }
+}
