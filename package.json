@@ -17,8 +17,7 @@
     "appId": "com.diarycalendar.app",
     "productName": "DiaryCalendar",
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": "portable"
     }
   }
 }
