@@ -26,6 +26,20 @@
       <!-- 日付はJavaScriptで動的に生成 -->
     </div>
   </div>
+
+  <!-- 習慣選択ポップアップ -->
+  <div id="popup-overlay" class="popup-overlay">
+    <div class="popup">
+      <div class="popup-header">
+        <h3 id="popup-date"></h3>
+        <button id="popup-close" class="popup-close">&times;</button>
+      </div>
+      <div id="habit-list" class="habit-list">
+        <!-- 習慣リストはJavaScriptで生成 -->
+      </div>
+    </div>
+  </div>
+
   <script src="renderer.js"></script>
 </body>
 </html>
