@@ -5,8 +5,20 @@ let currentMonth;
 // 選択中の日付
 let selectedDate = null;
 
-// 習慣リスト（絵文字とラベル）
-const habits = [
+// 絵文字選択対象のインデックス
+let emojiTargetIndex = null;
+
+// 選択可能な絵文字リスト
+const availableEmojis = [
+  '📚', '🏃', '✍️', '🧘', '💪', '🎨',
+  '🎵', '🎮', '💻', '📝', '🍳', '🧹',
+  '💤', '💊', '🚰', '🥗', '🚶', '🚴',
+  '🏊', '⚽', '🎾', '🏀', '📖', '✏️',
+  '🎯', '💡', '🌱', '🌸', '⭐', '❤️'
+];
+
+// デフォルトの習慣リスト
+const defaultHabits = [
   { emoji: '📚', label: '読書' },
   { emoji: '🏃', label: '運動' },
   { emoji: '✍️', label: '勉強' },
@@ -14,6 +26,9 @@ const habits = [
   { emoji: '💪', label: '筋トレ' },
   { emoji: '🎨', label: '創作活動' }
 ];
+
+// 習慣リスト（絵文字とラベル）
+let habits = [];
 
 // 記録データ（日付をキーにして絵文字を保存）
 let records = {};
@@ -25,7 +40,7 @@ function init() {
   currentMonth = today.getMonth();
 
   // localStorageからデータを読み込み
-  loadRecords();
+  loadData();
 
   renderCalendar();
 
@@ -36,17 +51,48 @@ function init() {
   document.getElementById('popup-overlay').addEventListener('click', function(e) {
     if (e.target === this) closePopup();
   });
+
+  // 習慣管理モーダルのイベントリスナー
+  document.getElementById('manage-habits-btn').addEventListener('click', openManageModal);
+  document.getElementById('manage-modal-close').addEventListener('click', closeManageModal);
+  document.getElementById('manage-modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeManageModal();
+  });
+  document.getElementById('add-habit-btn').addEventListener('click', addNewHabit);
+
+  // 絵文字選択モーダルのイベントリスナー
+  document.getElementById('emoji-modal-close').addEventListener('click', closeEmojiModal);
+  document.getElementById('emoji-modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeEmojiModal();
+  });
+
+  // 絵文字グリッドを初期化
+  initEmojiGrid();
 }
 
 // localStorageからデータを読み込み
-function loadRecords() {
-  const saved = localStorage.getItem('diary-calendar-records');
-  if (saved) {
-    records = JSON.parse(saved);
+function loadData() {
+  // 習慣リストを読み込み
+  const savedHabits = localStorage.getItem('diary-calendar-habits');
+  if (savedHabits) {
+    habits = JSON.parse(savedHabits);
+  } else {
+    habits = [...defaultHabits];
+  }
+
+  // 記録を読み込み
+  const savedRecords = localStorage.getItem('diary-calendar-records');
+  if (savedRecords) {
+    records = JSON.parse(savedRecords);
   }
 }
 
-// localStorageにデータを保存
+// 習慣リストを保存
+function saveHabits() {
+  localStorage.setItem('diary-calendar-habits', JSON.stringify(habits));
+}
+
+// 記録を保存
 function saveRecords() {
   localStorage.setItem('diary-calendar-records', JSON.stringify(records));
 }
@@ -78,12 +124,12 @@ function renderCalendar() {
   // 前月の日を表示
   const firstDayOfWeek = firstDay.getDay();
   const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
-  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const prevMonthNum = currentMonth === 0 ? 11 : currentMonth - 1;
   const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
   for (let i = firstDayOfWeek - 1; i >= 0; i--) {
     const day = prevMonthLastDay - i;
-    const dayElement = createDayElement(day, true, (firstDayOfWeek - 1 - i) % 7, false, prevYear, prevMonth);
+    const dayElement = createDayElement(day, true, (firstDayOfWeek - 1 - i) % 7, false, prevYear, prevMonthNum);
     daysContainer.appendChild(dayElement);
   }
 
@@ -102,12 +148,12 @@ function renderCalendar() {
   // 次月の日を表示（6行分埋める）
   const totalCells = firstDayOfWeek + lastDay.getDate();
   const remainingCells = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
-  const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+  const nextMonthNum = currentMonth === 11 ? 0 : currentMonth + 1;
   const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
 
   for (let day = 1; day <= remainingCells; day++) {
     const dayOfWeek = (firstDayOfWeek + lastDay.getDate() + day - 1) % 7;
-    const dayElement = createDayElement(day, true, dayOfWeek, false, nextYear, nextMonth);
+    const dayElement = createDayElement(day, true, dayOfWeek, false, nextYear, nextMonthNum);
     daysContainer.appendChild(dayElement);
   }
 }
@@ -219,6 +265,119 @@ function selectHabit(emoji) {
     renderCalendar();
   }
   closePopup();
+}
+
+// 習慣管理モーダルを開く
+function openManageModal() {
+  renderManageHabitList();
+  document.getElementById('manage-modal-overlay').classList.add('active');
+}
+
+// 習慣管理モーダルを閉じる
+function closeManageModal() {
+  document.getElementById('manage-modal-overlay').classList.remove('active');
+  // カレンダーを再描画（習慣が変更された場合に備えて）
+  renderCalendar();
+}
+
+// 習慣管理リストを描画
+function renderManageHabitList() {
+  const listContainer = document.getElementById('manage-habit-list');
+  listContainer.innerHTML = '';
+
+  habits.forEach((habit, index) => {
+    const item = document.createElement('div');
+    item.classList.add('manage-habit-item');
+
+    // 絵文字ボタン
+    const emojiBtn = document.createElement('button');
+    emojiBtn.classList.add('emoji-btn');
+    if (habit.emoji) {
+      emojiBtn.textContent = habit.emoji;
+      emojiBtn.classList.add('has-emoji');
+    } else {
+      emojiBtn.textContent = '?';
+    }
+    emojiBtn.addEventListener('click', function() {
+      openEmojiModal(index);
+    });
+
+    // ラベル入力
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.classList.add('label-input');
+    labelInput.value = habit.label;
+    labelInput.placeholder = '習慣の名前';
+    labelInput.addEventListener('change', function() {
+      habits[index].label = this.value;
+      saveHabits();
+    });
+
+    // 削除ボタン
+    const deleteBtn = document.createElement('button');
+    deleteBtn.classList.add('delete-btn');
+    deleteBtn.textContent = '×';
+    deleteBtn.addEventListener('click', function() {
+      deleteHabit(index);
+    });
+
+    item.appendChild(emojiBtn);
+    item.appendChild(labelInput);
+    item.appendChild(deleteBtn);
+    listContainer.appendChild(item);
+  });
+}
+
+// 新しい習慣を追加
+function addNewHabit() {
+  habits.push({ emoji: '', label: '' });
+  saveHabits();
+  renderManageHabitList();
+}
+
+// 習慣を削除
+function deleteHabit(index) {
+  habits.splice(index, 1);
+  saveHabits();
+  renderManageHabitList();
+}
+
+// 絵文字選択モーダルを開く
+function openEmojiModal(index) {
+  emojiTargetIndex = index;
+  document.getElementById('emoji-modal-overlay').classList.add('active');
+}
+
+// 絵文字選択モーダルを閉じる
+function closeEmojiModal() {
+  document.getElementById('emoji-modal-overlay').classList.remove('active');
+  emojiTargetIndex = null;
+}
+
+// 絵文字グリッドを初期化
+function initEmojiGrid() {
+  const grid = document.getElementById('emoji-grid');
+  grid.innerHTML = '';
+
+  availableEmojis.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.classList.add('emoji-option');
+    btn.textContent = emoji;
+    btn.addEventListener('click', function() {
+      selectEmoji(emoji);
+    });
+    grid.appendChild(btn);
+  });
+}
+
+// 絵文字を選択
+function selectEmoji(emoji) {
+  if (emojiTargetIndex !== null) {
+    habits[emojiTargetIndex].emoji = emoji;
+    saveHabits();
+    renderManageHabitList();
+  }
+  closeEmojiModal();
 }
 
 // 前月へ

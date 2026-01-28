@@ -7,23 +7,41 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="calendar-container">
-    <div class="calendar-header">
-      <button id="prev-month" class="nav-btn">&lt;</button>
-      <h2 id="current-month"></h2>
-      <button id="next-month" class="nav-btn">&gt;</button>
+  <div class="app-container">
+    <!-- 左サイドバー -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3>メニュー</h3>
+      </div>
+      <div class="sidebar-menu">
+        <button id="manage-habits-btn" class="menu-btn">
+          <span class="menu-icon">⚙️</span>
+          <span class="menu-label">習慣を管理</span>
+        </button>
+      </div>
     </div>
-    <div class="calendar-weekdays">
-      <div class="weekday sunday">日</div>
-      <div class="weekday">月</div>
-      <div class="weekday">火</div>
-      <div class="weekday">水</div>
-      <div class="weekday">木</div>
-      <div class="weekday">金</div>
-      <div class="weekday saturday">土</div>
-    </div>
-    <div id="calendar-days" class="calendar-days">
-      <!-- 日付はJavaScriptで動的に生成 -->
+
+    <!-- メインエリア（カレンダー） -->
+    <div class="main-area">
+      <div class="calendar-container">
+        <div class="calendar-header">
+          <button id="prev-month" class="nav-btn">&lt;</button>
+          <h2 id="current-month"></h2>
+          <button id="next-month" class="nav-btn">&gt;</button>
+        </div>
+        <div class="calendar-weekdays">
+          <div class="weekday sunday">日</div>
+          <div class="weekday">月</div>
+          <div class="weekday">火</div>
+          <div class="weekday">水</div>
+          <div class="weekday">木</div>
+          <div class="weekday">金</div>
+          <div class="weekday saturday">土</div>
+        </div>
+        <div id="calendar-days" class="calendar-days">
+          <!-- 日付はJavaScriptで動的に生成 -->
+        </div>
+      </div>
     </div>
   </div>
 
@@ -36,6 +54,37 @@
       </div>
       <div id="habit-list" class="habit-list">
         <!-- 習慣リストはJavaScriptで生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 習慣管理モーダル -->
+  <div id="manage-modal-overlay" class="popup-overlay">
+    <div class="popup manage-popup">
+      <div class="popup-header">
+        <h3>習慣を管理</h3>
+        <button id="manage-modal-close" class="popup-close">&times;</button>
+      </div>
+      <div class="manage-content">
+        <div id="manage-habit-list" class="manage-habit-list">
+          <!-- 習慣リストはJavaScriptで生成 -->
+        </div>
+        <button id="add-habit-btn" class="add-habit-btn">
+          <span>＋</span> 新しい習慣を追加
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 絵文字選択モーダル -->
+  <div id="emoji-modal-overlay" class="popup-overlay">
+    <div class="popup emoji-popup">
+      <div class="popup-header">
+        <h3>絵文字を選択</h3>
+        <button id="emoji-modal-close" class="popup-close">&times;</button>
+      </div>
+      <div id="emoji-grid" class="emoji-grid">
+        <!-- 絵文字はJavaScriptで生成 -->
       </div>
     </div>
   </div>
