@@ -8,6 +8,12 @@ let selectedDate = null;
 // 絵文字選択対象のインデックス
 let emojiTargetIndex = null;
 
+// 削除確認対象のインデックス
+let deleteTargetIndex = null;
+
+// 1日に登録できる習慣の最大数
+const MAX_HABITS_PER_DAY = 4;
+
 // 選択可能な絵文字リスト
 const availableEmojis = [
   '📚', '🏃', '✍️', '🧘', '💪', '🎨',
@@ -30,7 +36,7 @@ const defaultHabits = [
 // 習慣リスト（絵文字とラベル）
 let habits = [];
 
-// 記録データ（日付をキーにして絵文字を保存）
+// 記録データ（日付をキーにして絵文字の配列を保存）
 let records = {};
 
 // 初期化
@@ -66,6 +72,14 @@ function init() {
     if (e.target === this) closeEmojiModal();
   });
 
+  // 確認モーダルのイベントリスナー
+  document.getElementById('confirm-modal-close').addEventListener('click', closeConfirmModal);
+  document.getElementById('confirm-cancel').addEventListener('click', closeConfirmModal);
+  document.getElementById('confirm-ok').addEventListener('click', confirmDelete);
+  document.getElementById('confirm-modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeConfirmModal();
+  });
+
   // 絵文字グリッドを初期化
   initEmojiGrid();
 }
@@ -83,7 +97,15 @@ function loadData() {
   // 記録を読み込み
   const savedRecords = localStorage.getItem('diary-calendar-records');
   if (savedRecords) {
-    records = JSON.parse(savedRecords);
+    const loadedRecords = JSON.parse(savedRecords);
+    // 古い形式（文字列）から新しい形式（配列）に変換
+    for (const key in loadedRecords) {
+      if (typeof loadedRecords[key] === 'string') {
+        records[key] = [loadedRecords[key]];
+      } else {
+        records[key] = loadedRecords[key];
+      }
+    }
   }
 }
 
@@ -169,14 +191,21 @@ function createDayElement(day, isOtherMonth, dayOfWeek, isToday, year, month) {
   dayNumber.textContent = day;
   dayElement.appendChild(dayNumber);
 
-  // 絵文字表示エリア
+  // 絵文字表示エリア（複数対応）
   const dateKey = getDateKey(year, month, day);
-  const emojiSpan = document.createElement('span');
-  emojiSpan.classList.add('day-emoji');
-  if (records[dateKey]) {
-    emojiSpan.textContent = records[dateKey];
+  const emojisContainer = document.createElement('div');
+  emojisContainer.classList.add('day-emojis');
+
+  const emojis = records[dateKey] || [];
+  for (let i = 0; i < MAX_HABITS_PER_DAY; i++) {
+    const emojiSpan = document.createElement('span');
+    emojiSpan.classList.add('day-emoji');
+    if (emojis[i]) {
+      emojiSpan.textContent = emojis[i];
+    }
+    emojisContainer.appendChild(emojiSpan);
   }
-  dayElement.appendChild(emojiSpan);
+  dayElement.appendChild(emojisContainer);
 
   if (isOtherMonth) {
     dayElement.classList.add('other-month');
@@ -206,6 +235,8 @@ function createDayElement(day, isOtherMonth, dayOfWeek, isToday, year, month) {
 // ポップアップを開く
 function openPopup(year, month, day) {
   selectedDate = { year, month, day };
+  const dateKey = getDateKey(year, month, day);
+  const selectedEmojis = records[dateKey] || [];
 
   // 日付を表示
   document.getElementById('popup-date').textContent =
@@ -215,30 +246,44 @@ function openPopup(year, month, day) {
   const habitList = document.getElementById('habit-list');
   habitList.innerHTML = '';
 
+  // 上限情報を表示
+  const limitInfo = document.createElement('div');
+  limitInfo.classList.add('habit-limit-info');
+  limitInfo.textContent = `${selectedEmojis.length} / ${MAX_HABITS_PER_DAY} 個選択中`;
+  habitList.appendChild(limitInfo);
+
   habits.forEach(habit => {
     const item = document.createElement('div');
     item.classList.add('habit-item');
+
+    const isSelected = selectedEmojis.includes(habit.emoji);
+    if (isSelected) {
+      item.classList.add('selected');
+    }
+
     item.innerHTML = `
       <span class="emoji">${habit.emoji}</span>
       <span class="label">${habit.label}</span>
     `;
     item.addEventListener('click', function() {
-      selectHabit(habit.emoji);
+      toggleHabit(habit.emoji);
     });
     habitList.appendChild(item);
   });
 
-  // クリアボタンを追加
-  const clearItem = document.createElement('div');
-  clearItem.classList.add('habit-item', 'clear');
-  clearItem.innerHTML = `
-    <span class="emoji">🗑️</span>
-    <span class="label">クリア</span>
-  `;
-  clearItem.addEventListener('click', function() {
-    selectHabit(null);
-  });
-  habitList.appendChild(clearItem);
+  // 全クリアボタンを追加
+  if (selectedEmojis.length > 0) {
+    const clearItem = document.createElement('div');
+    clearItem.classList.add('habit-item', 'clear');
+    clearItem.innerHTML = `
+      <span class="emoji">🗑️</span>
+      <span class="label">すべてクリア</span>
+    `;
+    clearItem.addEventListener('click', function() {
+      clearAllHabits();
+    });
+    habitList.appendChild(clearItem);
+  }
 
   // ポップアップを表示
   document.getElementById('popup-overlay').classList.add('active');
@@ -250,20 +295,46 @@ function closePopup() {
   selectedDate = null;
 }
 
-// 習慣を選択
-function selectHabit(emoji) {
-  if (selectedDate) {
-    const dateKey = getDateKey(selectedDate.year, selectedDate.month, selectedDate.day);
+// 習慣をトグル（選択/解除）
+function toggleHabit(emoji) {
+  if (!selectedDate) return;
 
-    if (emoji) {
-      records[dateKey] = emoji;
-    } else {
-      delete records[dateKey];
+  const dateKey = getDateKey(selectedDate.year, selectedDate.month, selectedDate.day);
+  let emojis = records[dateKey] || [];
+
+  const index = emojis.indexOf(emoji);
+  if (index > -1) {
+    // 既に選択されている場合は削除
+    emojis.splice(index, 1);
+  } else {
+    // 選択されていない場合は追加（上限チェック）
+    if (emojis.length >= MAX_HABITS_PER_DAY) {
+      return; // 上限に達している場合は何もしない
     }
-
-    saveRecords();
-    renderCalendar();
+    emojis.push(emoji);
   }
+
+  if (emojis.length === 0) {
+    delete records[dateKey];
+  } else {
+    records[dateKey] = emojis;
+  }
+
+  saveRecords();
+  renderCalendar();
+  // ポップアップを更新
+  openPopup(selectedDate.year, selectedDate.month, selectedDate.day);
+}
+
+// すべての習慣をクリア
+function clearAllHabits() {
+  if (!selectedDate) return;
+
+  const dateKey = getDateKey(selectedDate.year, selectedDate.month, selectedDate.day);
+  delete records[dateKey];
+
+  saveRecords();
+  renderCalendar();
   closePopup();
 }
 
@@ -318,7 +389,7 @@ function renderManageHabitList() {
     deleteBtn.classList.add('delete-btn');
     deleteBtn.textContent = '×';
     deleteBtn.addEventListener('click', function() {
-      deleteHabit(index);
+      tryDeleteHabit(index);
     });
 
     item.appendChild(emojiBtn);
@@ -333,6 +404,74 @@ function addNewHabit() {
   habits.push({ emoji: '', label: '' });
   saveHabits();
   renderManageHabitList();
+}
+
+// 習慣の削除を試みる（確認が必要な場合はモーダルを表示）
+function tryDeleteHabit(index) {
+  const habit = habits[index];
+
+  // 絵文字が空の場合は即削除
+  if (!habit.emoji) {
+    deleteHabit(index);
+    return;
+  }
+
+  // この習慣の絵文字がrecordsに存在するかチェック
+  const isUsed = isHabitUsed(habit.emoji);
+
+  if (isUsed) {
+    // 使用されている場合は確認モーダルを表示
+    deleteTargetIndex = index;
+    document.getElementById('confirm-message').textContent =
+      `「${habit.label || habit.emoji}」は記録に使用されています。\n削除すると、カレンダー上の記録からもこの習慣が削除されます。\n本当に削除しますか？`;
+    document.getElementById('confirm-modal-overlay').classList.add('active');
+  } else {
+    // 使用されていない場合は即削除
+    deleteHabit(index);
+  }
+}
+
+// 習慣が記録に使用されているかチェック
+function isHabitUsed(emoji) {
+  for (const dateKey in records) {
+    const emojis = records[dateKey];
+    if (Array.isArray(emojis) && emojis.includes(emoji)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// 確認モーダルを閉じる
+function closeConfirmModal() {
+  document.getElementById('confirm-modal-overlay').classList.remove('active');
+  deleteTargetIndex = null;
+}
+
+// 削除を確認
+function confirmDelete() {
+  if (deleteTargetIndex !== null) {
+    const habit = habits[deleteTargetIndex];
+
+    // recordsからこの習慣の絵文字を削除
+    for (const dateKey in records) {
+      const emojis = records[dateKey];
+      if (Array.isArray(emojis)) {
+        const index = emojis.indexOf(habit.emoji);
+        if (index > -1) {
+          emojis.splice(index, 1);
+          if (emojis.length === 0) {
+            delete records[dateKey];
+          }
+        }
+      }
+    }
+    saveRecords();
+
+    // 習慣を削除
+    deleteHabit(deleteTargetIndex);
+  }
+  closeConfirmModal();
 }
 
 // 習慣を削除

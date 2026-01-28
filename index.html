@@ -89,6 +89,21 @@
     </div>
   </div>
 
+  <!-- 削除確認モーダル -->
+  <div id="confirm-modal-overlay" class="popup-overlay">
+    <div class="popup confirm-popup">
+      <div class="popup-header">
+        <h3>確認</h3>
+        <button id="confirm-modal-close" class="popup-close">&times;</button>
+      </div>
+      <p id="confirm-message" class="confirm-message"></p>
+      <div class="confirm-buttons">
+        <button id="confirm-cancel" class="confirm-btn cancel">キャンセル</button>
+        <button id="confirm-ok" class="confirm-btn danger">削除する</button>
+      </div>
+    </div>
+  </div>
+
   <script src="renderer.js"></script>
 </body>
 </html>
