@@ -15,14 +15,38 @@ let deleteTargetIndex = null;
 // 1日に登録できる習慣の最大数
 const MAX_HABITS_PER_DAY = 4;
 
-// 選択可能な絵文字リスト
-const availableEmojis = [
-  '📚', '🏃', '✍️', '🧘', '💪', '🎨',
-  '🎵', '🎮', '💻', '📝', '🍳', '🧹',
-  '💤', '💊', '🚰', '🥗', '🚶', '🚴',
-  '🏊', '⚽', '🎾', '🏀', '📖', '✏️',
-  '🎯', '💡', '🌱', '🌸', '⭐', '❤️'
-];
+// カテゴリ別絵文字リスト
+const emojiCategories = {
+  activity: {
+    name: '運動',
+    emojis: ['🏃', '💪', '🚶', '🚴', '🏊', '⚽', '🎾', '🏀', '⚾', '🏐', '🏈', '🎳', '🏋️', '🤸', '🧘', '🧗', '🤾', '🏌️', '🏇', '⛷️', '🏂', '🛹', '🛼', '🚣']
+  },
+  study: {
+    name: '学習',
+    emojis: ['📚', '✍️', '📝', '📖', '✏️', '💡', '🎓', '📐', '📏', '🔬', '🔭', '💻', '⌨️', '🖥️', '📊', '📈', '🧮', '📓', '📔', '📒', '🗂️', '📑', '🗒️', '✒️']
+  },
+  life: {
+    name: '生活',
+    emojis: ['🍳', '🧹', '💤', '💊', '🚰', '🥗', '🍽️', '🛁', '🚿', '🪥', '💇', '👔', '👕', '🧺', '🛒', '💰', '🏠', '🛏️', '⏰', '📱', '🚗', '🚌', '✈️', '🛫']
+  },
+  hobby: {
+    name: '趣味',
+    emojis: ['🎨', '🎵', '🎮', '🎯', '🎬', '🎭', '🎪', '🎸', '🎹', '🎺', '🎻', '🎲', '🃏', '🎰', '🎧', '📷', '📸', '🎥', '📹', '🖼️', '🎁', '🧩', '♟️', '🎤']
+  },
+  other: {
+    name: 'その他',
+    emojis: ['🌱', '🌸', '⭐', '❤️', '💖', '💝', '🎉', '🎊', '✨', '🔥', '💯', '🏆', '🥇', '🥈', '🥉', '🎖️', '🏅', '👍', '👏', '🙏', '💪', '🤝', '✅', '☑️']
+  }
+};
+
+// 選択可能な絵文字リスト（後方互換性のため）
+const availableEmojis = Object.values(emojiCategories).flatMap(cat => cat.emojis);
+
+// 現在選択中のカテゴリ
+let currentEmojiCategory = 'activity';
+
+// カスタム画像リスト
+let customImages = [];
 
 // デフォルトの習慣リスト
 const defaultHabits = [
@@ -107,6 +131,20 @@ function init() {
     });
   }
 
+  // 絵文字カテゴリタブのイベントリスナー
+  document.querySelectorAll('.emoji-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      const category = this.dataset.category;
+      switchEmojiCategory(category);
+    });
+  });
+
+  // 画像アップロードのイベントリスナー
+  document.getElementById('upload-image-btn').addEventListener('click', function() {
+    document.getElementById('image-upload').click();
+  });
+  document.getElementById('image-upload').addEventListener('change', handleImageUpload);
+
   // 絵文字グリッドを初期化
   initEmojiGrid();
 }
@@ -142,6 +180,12 @@ function loadData() {
       }
     }
   }
+
+  // カスタム画像を読み込み
+  const savedCustomImages = localStorage.getItem('diary-calendar-custom-images');
+  if (savedCustomImages) {
+    customImages = JSON.parse(savedCustomImages);
+  }
 }
 
 // 習慣リストを保存
@@ -159,9 +203,32 @@ function saveRecords() {
   localStorage.setItem('diary-calendar-records', JSON.stringify(records));
 }
 
+// カスタム画像を保存
+function saveCustomImages() {
+  localStorage.setItem('diary-calendar-custom-images', JSON.stringify(customImages));
+}
+
 // 日付キーを生成（YYYY-MM-DD形式）
 function getDateKey(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// 絵文字またはカスタム画像をレンダリング
+function renderEmojiContent(emojiData, container) {
+  container.innerHTML = '';
+  if (!emojiData) return;
+
+  if (emojiData.startsWith('custom:')) {
+    const index = parseInt(emojiData.split(':')[1]);
+    if (customImages[index]) {
+      const img = document.createElement('img');
+      img.src = customImages[index];
+      img.alt = 'カスタム画像';
+      container.appendChild(img);
+    }
+  } else {
+    container.textContent = emojiData;
+  }
 }
 
 // 今日の日付キーを取得
@@ -181,7 +248,7 @@ function renderQuickButtons() {
     const habit = quickHabits[i];
 
     if (habit && habit.emoji) {
-      emojiSpan.textContent = habit.emoji;
+      renderEmojiContent(habit.emoji, emojiSpan);
       btn.classList.remove('empty');
 
       // 今日既に登録されているかチェック
@@ -306,7 +373,7 @@ function createDayElement(day, isOtherMonth, dayOfWeek, isToday, year, month) {
     const emojiSpan = document.createElement('span');
     emojiSpan.classList.add('day-emoji');
     if (emojis[i]) {
-      emojiSpan.textContent = emojis[i];
+      renderEmojiContent(emojis[i], emojiSpan);
     }
     emojisContainer.appendChild(emojiSpan);
   }
@@ -366,10 +433,16 @@ function openPopup(year, month, day) {
       item.classList.add('selected');
     }
 
-    item.innerHTML = `
-      <span class="emoji">${habit.emoji}</span>
-      <span class="label">${habit.label}</span>
-    `;
+    const emojiSpan = document.createElement('span');
+    emojiSpan.classList.add('emoji');
+    renderEmojiContent(habit.emoji, emojiSpan);
+
+    const labelSpan = document.createElement('span');
+    labelSpan.classList.add('label');
+    labelSpan.textContent = habit.label;
+
+    item.appendChild(emojiSpan);
+    item.appendChild(labelSpan);
     item.addEventListener('click', function() {
       toggleHabit(habit.emoji);
     });
@@ -471,8 +544,11 @@ function renderManageHabitList() {
     const emojiBtn = document.createElement('button');
     emojiBtn.classList.add('emoji-btn');
     if (habit.emoji) {
-      emojiBtn.textContent = habit.emoji;
+      renderEmojiContent(habit.emoji, emojiBtn);
       emojiBtn.classList.add('has-emoji');
+      if (habit.emoji.startsWith('custom:')) {
+        emojiBtn.classList.add('has-image');
+      }
     } else {
       emojiBtn.textContent = '?';
     }
@@ -545,8 +621,11 @@ function renderQuickHabitList() {
     const emojiBtn = document.createElement('button');
     emojiBtn.classList.add('emoji-btn');
     if (habit.emoji) {
-      emojiBtn.textContent = habit.emoji;
+      renderEmojiContent(habit.emoji, emojiBtn);
       emojiBtn.classList.add('has-emoji');
+      if (habit.emoji.startsWith('custom:')) {
+        emojiBtn.classList.add('has-image');
+      }
     } else {
       emojiBtn.textContent = '?';
     }
@@ -651,6 +730,8 @@ function deleteHabit(index) {
 function openEmojiModal(index, type) {
   emojiTargetIndex = index;
   emojiTargetType = type;
+  // カテゴリをリセットして絵文字グリッドを再描画
+  switchEmojiCategory('activity');
   document.getElementById('emoji-modal-overlay').classList.add('active');
 }
 
@@ -661,20 +742,224 @@ function closeEmojiModal() {
   emojiTargetType = null;
 }
 
-// 絵文字グリッドを初期化
-function initEmojiGrid() {
+// 絵文字カテゴリを切り替え
+function switchEmojiCategory(category) {
+  currentEmojiCategory = category;
+
+  // タブのアクティブ状態を更新
+  document.querySelectorAll('.emoji-tab').forEach(tab => {
+    if (tab.dataset.category === category) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+
+  // カスタムセクションの表示切り替え
+  const customSection = document.getElementById('custom-image-section');
+  if (category === 'custom') {
+    customSection.style.display = 'block';
+  } else {
+    customSection.style.display = 'none';
+  }
+
+  // 絵文字グリッドを更新
+  renderEmojiGrid();
+}
+
+// 絵文字グリッドを描画
+function renderEmojiGrid() {
   const grid = document.getElementById('emoji-grid');
   grid.innerHTML = '';
 
-  availableEmojis.forEach(emoji => {
-    const btn = document.createElement('button');
-    btn.classList.add('emoji-option');
-    btn.textContent = emoji;
-    btn.addEventListener('click', function() {
-      selectEmoji(emoji);
+  if (currentEmojiCategory === 'custom') {
+    // カスタム画像を表示
+    if (customImages.length === 0) {
+      const emptyMsg = document.createElement('p');
+      emptyMsg.style.cssText = 'text-align: center; color: #999; padding: 20px; grid-column: 1 / -1;';
+      emptyMsg.textContent = 'アップロードした画像がありません';
+      grid.appendChild(emptyMsg);
+    } else {
+      customImages.forEach((imgData, index) => {
+        const container = document.createElement('div');
+        container.classList.add('custom-image-item');
+
+        const btn = document.createElement('button');
+        btn.classList.add('emoji-option', 'custom-image');
+        const img = document.createElement('img');
+        img.src = imgData;
+        btn.appendChild(img);
+        btn.addEventListener('click', function() {
+          selectEmoji(`custom:${index}`);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.classList.add('custom-image-delete');
+        deleteBtn.textContent = '×';
+        deleteBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          deleteCustomImage(index);
+        });
+
+        container.appendChild(btn);
+        container.appendChild(deleteBtn);
+        grid.appendChild(container);
+      });
+    }
+  } else {
+    // 通常の絵文字を表示
+    const emojis = emojiCategories[currentEmojiCategory]?.emojis || [];
+    emojis.forEach(emoji => {
+      const btn = document.createElement('button');
+      btn.classList.add('emoji-option');
+      btn.textContent = emoji;
+      btn.addEventListener('click', function() {
+        selectEmoji(emoji);
+      });
+      grid.appendChild(btn);
     });
-    grid.appendChild(btn);
+  }
+}
+
+// 絵文字グリッドを初期化
+function initEmojiGrid() {
+  currentEmojiCategory = 'activity';
+  renderEmojiGrid();
+}
+
+// 画像アップロード処理
+function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // ファイルサイズチェック（2MB以下）
+  if (file.size > 2 * 1024 * 1024) {
+    alert('画像サイズは2MB以下にしてください');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    // 画像を正方形にリサイズ
+    resizeImage(e.target.result, 64, function(resizedDataUrl) {
+      customImages.push(resizedDataUrl);
+      saveCustomImages();
+      renderEmojiGrid();
+    });
+  };
+  reader.readAsDataURL(file);
+
+  // inputをリセット（同じファイルを再選択可能にする）
+  event.target.value = '';
+}
+
+// 画像をリサイズ（正方形に切り取り）
+function resizeImage(dataUrl, size, callback) {
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // 正方形に切り取り（中央基準）
+    const minSide = Math.min(img.width, img.height);
+    const sx = (img.width - minSide) / 2;
+    const sy = (img.height - minSide) / 2;
+
+    ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+    callback(canvas.toDataURL('image/png'));
+  };
+  img.src = dataUrl;
+}
+
+// カスタム画像を削除
+function deleteCustomImage(index) {
+  const imgData = `custom:${index}`;
+
+  // この画像が使用されているかチェック
+  let isUsed = false;
+  for (const dateKey in records) {
+    if (records[dateKey].some(e => e === imgData)) {
+      isUsed = true;
+      break;
+    }
+  }
+
+  if (isUsed) {
+    if (!confirm('この画像は記録で使用されています。削除すると記録からも削除されます。よろしいですか？')) {
+      return;
+    }
+    // recordsから削除
+    for (const dateKey in records) {
+      records[dateKey] = records[dateKey].filter(e => e !== imgData);
+      if (records[dateKey].length === 0) {
+        delete records[dateKey];
+      }
+    }
+    saveRecords();
+  }
+
+  // 習慣とクイック習慣からも削除
+  habits.forEach(h => {
+    if (h.emoji === imgData) h.emoji = '';
   });
+  quickHabits.forEach(h => {
+    if (h.emoji === imgData) h.emoji = '';
+  });
+  saveHabits();
+  saveQuickHabits();
+
+  // インデックスを更新（削除後のインデックスずれを修正）
+  const oldIndex = index;
+  customImages.splice(index, 1);
+  saveCustomImages();
+
+  // 全ての参照を更新
+  updateCustomImageReferences(oldIndex);
+
+  renderEmojiGrid();
+  renderCalendar();
+  renderQuickButtons();
+}
+
+// カスタム画像の参照を更新（削除時のインデックスずれ修正）
+function updateCustomImageReferences(deletedIndex) {
+  // records内の参照を更新
+  for (const dateKey in records) {
+    records[dateKey] = records[dateKey].map(e => {
+      if (e.startsWith('custom:')) {
+        const idx = parseInt(e.split(':')[1]);
+        if (idx > deletedIndex) {
+          return `custom:${idx - 1}`;
+        }
+      }
+      return e;
+    });
+  }
+  saveRecords();
+
+  // habits内の参照を更新
+  habits.forEach(h => {
+    if (h.emoji && h.emoji.startsWith('custom:')) {
+      const idx = parseInt(h.emoji.split(':')[1]);
+      if (idx > deletedIndex) {
+        h.emoji = `custom:${idx - 1}`;
+      }
+    }
+  });
+  saveHabits();
+
+  // quickHabits内の参照を更新
+  quickHabits.forEach(h => {
+    if (h.emoji && h.emoji.startsWith('custom:')) {
+      const idx = parseInt(h.emoji.split(':')[1]);
+      if (idx > deletedIndex) {
+        h.emoji = `custom:${idx - 1}`;
+      }
+    }
+  });
+  saveQuickHabits();
 }
 
 // 絵文字を選択

@@ -116,11 +116,28 @@
   <div id="emoji-modal-overlay" class="popup-overlay">
     <div class="popup emoji-popup">
       <div class="popup-header">
-        <h3>絵文字を選択</h3>
+        <h3>アイコンを選択</h3>
         <button id="emoji-modal-close" class="popup-close">&times;</button>
+      </div>
+      <!-- カテゴリタブ -->
+      <div class="emoji-tabs">
+        <button class="emoji-tab active" data-category="activity">運動</button>
+        <button class="emoji-tab" data-category="study">学習</button>
+        <button class="emoji-tab" data-category="life">生活</button>
+        <button class="emoji-tab" data-category="hobby">趣味</button>
+        <button class="emoji-tab" data-category="other">その他</button>
+        <button class="emoji-tab" data-category="custom">カスタム</button>
       </div>
       <div id="emoji-grid" class="emoji-grid">
         <!-- 絵文字はJavaScriptで生成 -->
+      </div>
+      <!-- 画像アップロード -->
+      <div id="custom-image-section" class="custom-image-section" style="display: none;">
+        <input type="file" id="image-upload" accept="image/*" style="display: none;">
+        <button id="upload-image-btn" class="upload-image-btn">
+          <span>📁</span> 画像をアップロード
+        </button>
+        <p class="upload-hint">※ 画像は正方形に切り取られます</p>
       </div>
     </div>
   </div>
