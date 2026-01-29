@@ -379,6 +379,11 @@ function createDayElement(day, isOtherMonth, dayOfWeek, isToday, year, month) {
   }
   dayElement.appendChild(emojisContainer);
 
+  // 習慣が登録されている場合はクラスを追加
+  if (emojis.length > 0) {
+    dayElement.classList.add('has-habits');
+  }
+
   if (isOtherMonth) {
     dayElement.classList.add('other-month');
   }
