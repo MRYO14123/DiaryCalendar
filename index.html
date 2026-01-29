@@ -14,6 +14,10 @@
         <h3>メニュー</h3>
       </div>
       <div class="sidebar-menu">
+        <button id="quick-habits-btn" class="menu-btn">
+          <span class="menu-icon">🎯</span>
+          <span class="menu-label">習慣</span>
+        </button>
         <button id="manage-habits-btn" class="menu-btn">
           <span class="menu-icon">⚙️</span>
           <span class="menu-label">習慣を管理</span>
@@ -24,6 +28,22 @@
     <!-- メインエリア（カレンダー） -->
     <div class="main-area">
       <div class="calendar-container">
+        <!-- クイック習慣ボタン -->
+        <div class="quick-buttons">
+          <button id="quick-btn-0" class="quick-btn">
+            <span class="quick-btn-emoji"></span>
+          </button>
+          <button id="quick-btn-1" class="quick-btn">
+            <span class="quick-btn-emoji"></span>
+          </button>
+          <button id="quick-btn-2" class="quick-btn">
+            <span class="quick-btn-emoji"></span>
+          </button>
+          <button id="quick-btn-3" class="quick-btn">
+            <span class="quick-btn-emoji"></span>
+          </button>
+        </div>
+
         <div class="calendar-header">
           <button id="prev-month" class="nav-btn">&lt;</button>
           <h2 id="current-month"></h2>
@@ -72,6 +92,22 @@
         <button id="add-habit-btn" class="add-habit-btn">
           <span>＋</span> 新しい習慣を追加
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- クイック習慣設定モーダル -->
+  <div id="quick-habits-modal-overlay" class="popup-overlay">
+    <div class="popup manage-popup">
+      <div class="popup-header">
+        <h3>習慣（クイックボタン）</h3>
+        <button id="quick-habits-modal-close" class="popup-close">&times;</button>
+      </div>
+      <div class="manage-content">
+        <p class="quick-habits-description">上部の4つのボタンに表示する習慣を設定します。<br>ボタンを押すと今日の日付に習慣が登録されます。</p>
+        <div id="quick-habit-list" class="manage-habit-list">
+          <!-- 習慣リストはJavaScriptで生成 -->
+        </div>
       </div>
     </div>
   </div>

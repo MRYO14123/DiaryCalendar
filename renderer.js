@@ -5,8 +5,9 @@ let currentMonth;
 // 選択中の日付
 let selectedDate = null;
 
-// 絵文字選択対象のインデックス
+// 絵文字選択対象のインデックスとタイプ
 let emojiTargetIndex = null;
+let emojiTargetType = null; // 'habits' or 'quickHabits'
 
 // 削除確認対象のインデックス
 let deleteTargetIndex = null;
@@ -33,8 +34,19 @@ const defaultHabits = [
   { emoji: '🎨', label: '創作活動' }
 ];
 
+// デフォルトのクイック習慣
+const defaultQuickHabits = [
+  { emoji: '📚', label: '読書' },
+  { emoji: '🏃', label: '運動' },
+  { emoji: '✍️', label: '勉強' },
+  { emoji: '💪', label: '筋トレ' }
+];
+
 // 習慣リスト（絵文字とラベル）
 let habits = [];
+
+// クイック習慣リスト（4つ固定）
+let quickHabits = [];
 
 // 記録データ（日付をキーにして絵文字の配列を保存）
 let records = {};
@@ -49,6 +61,7 @@ function init() {
   loadData();
 
   renderCalendar();
+  renderQuickButtons();
 
   // イベントリスナー
   document.getElementById('prev-month').addEventListener('click', prevMonth);
@@ -66,6 +79,13 @@ function init() {
   });
   document.getElementById('add-habit-btn').addEventListener('click', addNewHabit);
 
+  // クイック習慣設定モーダルのイベントリスナー
+  document.getElementById('quick-habits-btn').addEventListener('click', openQuickHabitsModal);
+  document.getElementById('quick-habits-modal-close').addEventListener('click', closeQuickHabitsModal);
+  document.getElementById('quick-habits-modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeQuickHabitsModal();
+  });
+
   // 絵文字選択モーダルのイベントリスナー
   document.getElementById('emoji-modal-close').addEventListener('click', closeEmojiModal);
   document.getElementById('emoji-modal-overlay').addEventListener('click', function(e) {
@@ -80,6 +100,13 @@ function init() {
     if (e.target === this) closeConfirmModal();
   });
 
+  // クイックボタンのイベントリスナー
+  for (let i = 0; i < 4; i++) {
+    document.getElementById(`quick-btn-${i}`).addEventListener('click', function() {
+      quickRegister(i);
+    });
+  }
+
   // 絵文字グリッドを初期化
   initEmojiGrid();
 }
@@ -92,6 +119,14 @@ function loadData() {
     habits = JSON.parse(savedHabits);
   } else {
     habits = [...defaultHabits];
+  }
+
+  // クイック習慣を読み込み
+  const savedQuickHabits = localStorage.getItem('diary-calendar-quick-habits');
+  if (savedQuickHabits) {
+    quickHabits = JSON.parse(savedQuickHabits);
+  } else {
+    quickHabits = [...defaultQuickHabits];
   }
 
   // 記録を読み込み
@@ -114,6 +149,11 @@ function saveHabits() {
   localStorage.setItem('diary-calendar-habits', JSON.stringify(habits));
 }
 
+// クイック習慣を保存
+function saveQuickHabits() {
+  localStorage.setItem('diary-calendar-quick-habits', JSON.stringify(quickHabits));
+}
+
 // 記録を保存
 function saveRecords() {
   localStorage.setItem('diary-calendar-records', JSON.stringify(records));
@@ -122,6 +162,71 @@ function saveRecords() {
 // 日付キーを生成（YYYY-MM-DD形式）
 function getDateKey(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+// 今日の日付キーを取得
+function getTodayKey() {
+  const today = new Date();
+  return getDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+}
+
+// クイックボタンを描画
+function renderQuickButtons() {
+  const todayKey = getTodayKey();
+  const todayEmojis = records[todayKey] || [];
+
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById(`quick-btn-${i}`);
+    const emojiSpan = btn.querySelector('.quick-btn-emoji');
+    const habit = quickHabits[i];
+
+    if (habit && habit.emoji) {
+      emojiSpan.textContent = habit.emoji;
+      btn.classList.remove('empty');
+
+      // 今日既に登録されているかチェック
+      if (todayEmojis.includes(habit.emoji)) {
+        btn.classList.add('registered');
+      } else {
+        btn.classList.remove('registered');
+      }
+    } else {
+      emojiSpan.textContent = '';
+      btn.classList.add('empty');
+      btn.classList.remove('registered');
+    }
+  }
+}
+
+// クイック登録（ボタンクリック時）
+function quickRegister(index) {
+  const habit = quickHabits[index];
+  if (!habit || !habit.emoji) return;
+
+  const todayKey = getTodayKey();
+  let emojis = records[todayKey] || [];
+
+  const emojiIndex = emojis.indexOf(habit.emoji);
+  if (emojiIndex > -1) {
+    // 既に登録されている場合は削除（トグル）
+    emojis.splice(emojiIndex, 1);
+  } else {
+    // 上限チェック
+    if (emojis.length >= MAX_HABITS_PER_DAY) {
+      return;
+    }
+    emojis.push(habit.emoji);
+  }
+
+  if (emojis.length === 0) {
+    delete records[todayKey];
+  } else {
+    records[todayKey] = emojis;
+  }
+
+  saveRecords();
+  renderCalendar();
+  renderQuickButtons();
 }
 
 // カレンダーを描画
@@ -322,6 +427,7 @@ function toggleHabit(emoji) {
 
   saveRecords();
   renderCalendar();
+  renderQuickButtons();
   // ポップアップを更新
   openPopup(selectedDate.year, selectedDate.month, selectedDate.day);
 }
@@ -335,6 +441,7 @@ function clearAllHabits() {
 
   saveRecords();
   renderCalendar();
+  renderQuickButtons();
   closePopup();
 }
 
@@ -370,7 +477,7 @@ function renderManageHabitList() {
       emojiBtn.textContent = '?';
     }
     emojiBtn.addEventListener('click', function() {
-      openEmojiModal(index);
+      openEmojiModal(index, 'habits');
     });
 
     // ラベル入力
@@ -404,6 +511,65 @@ function addNewHabit() {
   habits.push({ emoji: '', label: '' });
   saveHabits();
   renderManageHabitList();
+}
+
+// クイック習慣設定モーダルを開く
+function openQuickHabitsModal() {
+  renderQuickHabitList();
+  document.getElementById('quick-habits-modal-overlay').classList.add('active');
+}
+
+// クイック習慣設定モーダルを閉じる
+function closeQuickHabitsModal() {
+  document.getElementById('quick-habits-modal-overlay').classList.remove('active');
+  renderQuickButtons();
+}
+
+// クイック習慣リストを描画
+function renderQuickHabitList() {
+  const listContainer = document.getElementById('quick-habit-list');
+  listContainer.innerHTML = '';
+
+  for (let i = 0; i < 4; i++) {
+    const habit = quickHabits[i] || { emoji: '', label: '' };
+
+    const item = document.createElement('div');
+    item.classList.add('manage-habit-item');
+
+    // ボタン番号表示
+    const numLabel = document.createElement('span');
+    numLabel.style.cssText = 'font-weight: bold; color: #666; min-width: 24px;';
+    numLabel.textContent = `${i + 1}.`;
+
+    // 絵文字ボタン
+    const emojiBtn = document.createElement('button');
+    emojiBtn.classList.add('emoji-btn');
+    if (habit.emoji) {
+      emojiBtn.textContent = habit.emoji;
+      emojiBtn.classList.add('has-emoji');
+    } else {
+      emojiBtn.textContent = '?';
+    }
+    emojiBtn.addEventListener('click', function() {
+      openEmojiModal(i, 'quickHabits');
+    });
+
+    // ラベル入力
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.classList.add('label-input');
+    labelInput.value = habit.label;
+    labelInput.placeholder = '習慣の名前';
+    labelInput.addEventListener('change', function() {
+      quickHabits[i].label = this.value;
+      saveQuickHabits();
+    });
+
+    item.appendChild(numLabel);
+    item.appendChild(emojiBtn);
+    item.appendChild(labelInput);
+    listContainer.appendChild(item);
+  }
 }
 
 // 習慣の削除を試みる（確認が必要な場合はモーダルを表示）
@@ -482,8 +648,9 @@ function deleteHabit(index) {
 }
 
 // 絵文字選択モーダルを開く
-function openEmojiModal(index) {
+function openEmojiModal(index, type) {
   emojiTargetIndex = index;
+  emojiTargetType = type;
   document.getElementById('emoji-modal-overlay').classList.add('active');
 }
 
@@ -491,6 +658,7 @@ function openEmojiModal(index) {
 function closeEmojiModal() {
   document.getElementById('emoji-modal-overlay').classList.remove('active');
   emojiTargetIndex = null;
+  emojiTargetType = null;
 }
 
 // 絵文字グリッドを初期化
@@ -511,10 +679,19 @@ function initEmojiGrid() {
 
 // 絵文字を選択
 function selectEmoji(emoji) {
-  if (emojiTargetIndex !== null) {
-    habits[emojiTargetIndex].emoji = emoji;
-    saveHabits();
-    renderManageHabitList();
+  if (emojiTargetIndex !== null && emojiTargetType !== null) {
+    if (emojiTargetType === 'habits') {
+      habits[emojiTargetIndex].emoji = emoji;
+      saveHabits();
+      renderManageHabitList();
+    } else if (emojiTargetType === 'quickHabits') {
+      if (!quickHabits[emojiTargetIndex]) {
+        quickHabits[emojiTargetIndex] = { emoji: '', label: '' };
+      }
+      quickHabits[emojiTargetIndex].emoji = emoji;
+      saveQuickHabits();
+      renderQuickHabitList();
+    }
   }
   closeEmojiModal();
 }

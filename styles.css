@@ -513,3 +513,69 @@ body {
 .confirm-btn.danger:hover {
   background-color: #c0392b;
 }
+
+/* クイック習慣ボタン */
+.quick-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+.quick-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  max-width: 80px;
+  max-height: 80px;
+  border: 3px solid #e0e0e0;
+  border-radius: 50%;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.quick-btn:hover {
+  border-color: #4a90d9;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
+}
+
+.quick-btn:active {
+  transform: scale(0.95);
+}
+
+.quick-btn.registered {
+  border-color: #27ae60;
+  background-color: #e8f8f0;
+}
+
+.quick-btn-emoji {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.quick-btn.empty {
+  border-style: dashed;
+  border-color: #ccc;
+}
+
+.quick-btn.empty .quick-btn-emoji::before {
+  content: '?';
+  color: #ccc;
+  font-size: clamp(1.2rem, 3vw, 2rem);
+}
+
+/* クイック習慣設定モーダルの説明文 */
+.quick-habits-description {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 8px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
